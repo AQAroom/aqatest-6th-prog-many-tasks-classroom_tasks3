@@ -1,0 +1,91 @@
+{
+  "tasks": [
+    {
+      "id": "task_01",
+      "name": "Задача 1: Калькулятор",
+      "file": "task_01.py",
+      "max_score": 30,
+      "tests": [
+        {
+          "name": "Сложение",
+          "input": "5\n+\n3",
+          "expected_output": "8",
+          "comparison_method": "exact",
+          "max_score": 10
+        },
+        {
+          "name": "Вычитание",
+          "input": "10\n-\n4",
+          "expected_output": "6",
+          "comparison_method": "exact",
+          "max_score": 10
+        },
+        {
+          "name": "Деление на ноль",
+          "input": "10\n/\n0",
+          "expected_output": "error",
+          "comparison_method": "contains",
+          "max_score": 10
+        }
+      ]
+    },
+    {
+      "id": "task_02",
+      "name": "Задача 2: Палиндром",
+      "file": "task_02.py",
+      "max_score": 40,
+      "tests": [
+        {
+          "name": "Простой палиндром",
+          "input": "racecar",
+          "expected_output": "True",
+          "comparison_method": "exact",
+          "max_score": 15
+        },
+        {
+          "name": "Не палиндром",
+          "input": "hello",
+          "expected_output": "False",
+          "comparison_method": "exact",
+          "max_score": 15
+        },
+        {
+          "name": "Пустая строка / кириллица",
+          "input": "арозаупаланалапуазора",
+          "expected_output": "True",
+          "comparison_method": "exact",
+          "max_score": 10
+        }
+      ]
+    },
+    {
+      "id": "task_03",
+      "name": "Задача 3: Числа Фибоначчи",
+      "file": "task_03.py",
+      "max_score": 40,
+      "tests": [
+        {
+          "name": "Fibonacci(0)",
+          "input": "0",
+          "expected_output": "0",
+          "comparison_method": "exact",
+          "max_score": 10
+        },
+        {
+          "name": "Fibonacci(1)",
+          "input": "1",
+          "expected_output": "1",
+          "comparison_method": "exact",
+          "max_score": 10
+        },
+        {
+          "name": "Fibonacci(10)",
+          "input": "10",
+          "expected_output": "55",
+          "comparison_method": "exact",
+          "max_score": 20
+        }
+      ]
+    }
+  ]
+}

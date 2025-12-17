@@ -53,7 +53,7 @@ def run_single_test(command, input_str, expected_output, method, timeout):
         }
 
 def main():
-    with open("tools/config/tasks.json", "r", encoding="utf-8") as f:
+    with open(".github/tasks.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 
     os.makedirs("results", exist_ok=True)

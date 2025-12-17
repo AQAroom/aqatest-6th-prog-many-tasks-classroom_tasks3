@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils import encode_result_for_classroom
 
 def main():
-    with open("tools/config/tasks.json", "r", encoding="utf-8") as f:
+    with open(".github/tasks.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 
     for task in config["tasks"]:

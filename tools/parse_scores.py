@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils import decode_autograding_result
 
 def main():
-    with open("tools/config/tasks.json", "r", encoding="utf-8") as f:
+    with open(".github/tasks.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 
     total = 0

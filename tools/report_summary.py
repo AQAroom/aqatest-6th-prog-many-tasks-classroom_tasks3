@@ -4,24 +4,32 @@ import sys
 import os
 import argparse
 from pathlib import Path
+import os
 
 def extract_and_output_env():
     task_files = ["task_01", "task_02", "task_03"]
-    env_vars = []
+    outputs = []
+
     for tf in task_files:
         path = f"./aggregated/{tf}_aggregated.txt"
+        encoded = ""
         if os.path.exists(path):
             with open(path) as f:
                 content = f.read()
             if "AGGREGATED_RESULT=" in content:
                 encoded = content.split("AGGREGATED_RESULT=")[1].strip()
-                env_vars.append(f"{tf}_aggregated={encoded}")
-        else:
-            env_vars.append(f"{tf}_aggregated=")
+        outputs.append(f"{tf}_aggregated={encoded}")
 
-    # Выводим в GITHUB_OUTPUT формат
-    for var in env_vars:
-        print(f"::set-output name={var.split('=')[0]}::{var.split('=', 1)[1]}")
+    # Записываем в GITHUB_OUTPUT файл (новый способ)
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a") as f:
+            for line in outputs:
+                f.write(line + "\n")
+    else:
+        # Для локального тестирования — выводим в stdout (но без ::set-output!)
+        for line in outputs:
+            print(line)
 
 def generate_summary():
     with open(".github/tasks.json", "r", encoding="utf-8") as f:

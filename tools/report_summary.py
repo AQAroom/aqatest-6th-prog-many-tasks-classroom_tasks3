@@ -4,35 +4,38 @@ import sys
 import os
 import argparse
 from pathlib import Path
-import os
 
 def extract_and_output_env():
-    with open(".github/tasks.json", "r", encoding="utf-8") as f:
+    config_path = ".github/tasks.json"
+    if not os.path.exists(config_path):
+        print("❌ .github/tasks.json not found", file=sys.stderr)
+        sys.exit(1)
+
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
 
     github_output = os.environ.get("GITHUB_OUTPUT")
     if not github_output:
-        print("GITHUB_OUTPUT not set — running locally?")
+        print("⚠️ GITHUB_OUTPUT not set (running locally?)", file=sys.stderr)
         return
 
     with open(github_output, "a") as f:
         for task in config["tasks"]:
-            task_id = task["id"]  # например: "task_04"
+            task_id = task["id"]
             path = f"./aggregated/{task_id}_aggregated.txt"
             encoded = ""
             if os.path.exists(path):
                 with open(path) as fp:
                     content = fp.read()
                 if "AGGREGATED_RESULT=" in content:
-                    encoded = content.split("AGGREGATED_RESULT=")[1].strip()
-            # Пишем в формате: task_04_aggregated=...
+                    encoded = content.split("AGGREGATED_RESULT=", 1)[1].strip()
             f.write(f"{task_id}_aggregated={encoded}\n")
 
 def generate_summary():
-    with open(".github/tasks.json", "r", encoding="utf-8") as f:
+    config_path = ".github/tasks.json"
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    # Считаем баллы
     total_score = 0
     max_total = 0
     task_scores = {}
@@ -41,15 +44,20 @@ def generate_summary():
         task_id = task["id"]
         max_score = task["max_score"]
         max_total += max_score
-        with open(f"results/{task_id}.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-        score = sum(t["score"] for t in data["tests"])
+
+        json_path = f"results/{task_id}.json"
+        if os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            score = sum(t.get("score", 0) for t in data["tests"])
+        else:
+            score = 0
+
         task_scores[task_id] = score
         total_score += score
 
     percentage = int(100 * total_score / max_total) if max_total > 0 else 0
 
-    # Генерация Markdown
     summary = []
     summary.append("## 📊 ИТОГОВЫЙ ОТЧЕТ ПО ВСЕМ ЗАДАНИЯМ\n")
     summary.append("### 📈 Сводная таблица\n")
@@ -61,7 +69,7 @@ def generate_summary():
         name = task["name"]
         score = task_scores[tid]
         max_score = task["max_score"]
-        status = "✅" if score == max_score else "⚠️"
+        status = "✅" if score == max_score else ("⚠️" if score > 0 else "❌")
         summary.append(f"| **{name}** | {score} | {max_score} | {status} |")
 
     summary.append(f"| **ВСЕГО** | **{total_score}** | **{max_total}** | **{percentage}%** |")
@@ -85,10 +93,11 @@ def generate_summary():
     summary.append("")
     summary.append(f"**GitHub Classroom: {total_score}/{max_total} баллов**")
     summary.append("")
-    summary.append("*Автоматическая проверка завершена*")
+    summary.append("*Автоматическая проверка завершена* • $(date)")
 
     # Запись в GITHUB_STEP_SUMMARY
-    with open(os.environ.get("GITHUB_STEP_SUMMARY", "/dev/stdout"), "a") as f:
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY", "/dev/stdout")
+    with open(summary_file, "a") as f:
         f.write("\n".join(summary))
 
 def main():
@@ -104,7 +113,7 @@ def main():
     elif args.generate_summary:
         generate_summary()
     else:
-        print("Укажите действие: --extract --output-env или --generate-summary")
+        parser.print_help()
 
 if __name__ == "__main__":
     main()

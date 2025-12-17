@@ -5,9 +5,8 @@ import sys
 import os
 from pathlib import Path
 
-# Добавим текущую директорию в sys.path, чтобы импортировать utils
 sys.path.insert(0, str(Path(__file__).parent))
-from utils import encode_result_for_classroom
+from utils import encode_result_for_classroom, make_task_result_stub
 
 def run_single_test(command, input_str, expected_output, method, timeout):
     try:
@@ -29,74 +28,92 @@ def run_single_test(command, input_str, expected_output, method, timeout):
         else:
             passed = False
 
-        score = 1 if passed else 0  # autograding-io-grader возвращает 0/1, потом умножаем на max_score
-        output = actual if passed else f"Expected: {expected_output}, Got: {actual}"
-        if error:
+        score = 1 if passed else 0
+        output = actual
+        if error and not passed:
             output += f"\nSTDERR: {error}"
 
         return {
             "status": "pass" if passed else "fail",
-            "score": score,
+            "raw_score": score,
             "output": output
         }
     except subprocess.TimeoutExpired:
         return {
             "status": "fail",
-            "score": 0,
+            "raw_score": 0,
             "output": f"Timeout after {timeout}s"
         }
     except Exception as e:
         return {
             "status": "fail",
-            "score": 0,
+            "raw_score": 0,
             "output": f"Exception: {e}"
         }
 
 def main():
-    with open(".github/tasks.json", "r", encoding="utf-8") as f:
+    config_path = ".github/tasks.json"
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
 
     os.makedirs("results", exist_ok=True)
 
     for task in config["tasks"]:
         task_id = task["id"]
-        command = f"python {task['file']}"
-        task_results = []
+        task_file = task["file"]
+        print(f"\n🧪 Processing {task_id} ({task_file})...")
 
-        for test in task["tests"]:
-            print(f"Running {task_id}: {test['name']}")
-            res = run_single_test(
-                command=command,
-                input_str=test["input"],
-                expected_output=test["expected_output"],
-                method=test["comparison_method"],
-                timeout=5
-            )
-            # autograding-io-grader возвращает score=1 если passed, иначе 0
-            # но реальный балл = score * max_score
-            res["name"] = test["name"]
-            res["raw_score"] = res["score"]  # 0 или 1
-            res["max_score"] = test["max_score"]
-            res["score"] = res["raw_score"] * test["max_score"]
-            task_results.append(res)
+        # Проверяем, существует ли файл
+        if not os.path.exists(task_file):
+            print(f"  ❌ {task_file} not found → 0 points")
+            result_data = make_task_result_stub(task)
+        else:
+            # Проверяем синтаксис
+            try:
+                subprocess.run([sys.executable, "-m", "py_compile", task_file], check=True, capture_output=True)
+            except subprocess.CalledProcessError as e:
+                print(f"  ❌ Syntax error in {task_file} → 0 points")
+                result_data = make_task_result_stub(task)
+                # Добавим ошибку в первый тест
+                if result_data["tests"]:
+                    result_data["tests"][0]["output"] = f"SyntaxError:\n{e.stderr.decode()}"
+            else:
+                # Запускаем тесты
+                command = f"{sys.executable} {task_file}"
+                task_results = []
+                for test in task["tests"]:
+                    print(f"  → Running: {test['name']}")
+                    res = run_single_test(
+                        command=command,
+                        input_str=test["input"],
+                        expected_output=test["expected_output"],
+                        method=test["comparison_method"],
+                        timeout=5
+                    )
+                    res["name"] = test["name"]
+                    res["max_score"] = test["max_score"]
+                    res["score"] = res["raw_score"] * test["max_score"]
+                    task_results.append(res)
 
-        # Формат как у autograding-io-grader
-        full_result = {
-            "version": 1,
-            "status": "pass" if all(t["raw_score"] for t in task_results) else "fail",
-            "max_score": task["max_score"],
-            "tests": task_results
-        }
+                total_score = sum(t["score"] for t in task_results)
+                result_data = {
+                    "version": 1,
+                    "status": "pass" if total_score == task["max_score"] else "fail",
+                    "max_score": task["max_score"],
+                    "tests": task_results
+                }
 
-        encoded = encode_result_for_classroom(full_result)
+        # Сохраняем результат
         with open(f"results/{task_id}.json", "w", encoding="utf-8") as f:
-            json.dump(full_result, f, ensure_ascii=False, indent=2)
+            json.dump(result_data, f, ensure_ascii=False, indent=2)
 
-        # Сохраняем в формате, совместимом с оригинальным output.step
+        # Сохраняем base64-версию (для совместимости)
+        encoded = encode_result_for_classroom(result_data)
         with open(f"results/{task_id}.encoded", "w") as f:
             f.write(encoded)
 
-        print(f"✅ {task_id}: {sum(t['score'] for t in task_results)}/{task['max_score']}")
+        actual_score = sum(t.get("score", 0) for t in result_data["tests"])
+        print(f"  ✅ {task_id}: {actual_score}/{task['max_score']}")
 
 if __name__ == "__main__":
     main()

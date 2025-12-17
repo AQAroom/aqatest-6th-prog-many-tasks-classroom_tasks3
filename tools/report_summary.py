@@ -22,7 +22,7 @@ def extract_and_output_env():
     with open(github_output, "a") as f:
         for task in config["tasks"]:
             task_id = task["id"]
-            path = f"./aggregated/{task_id}_aggregated.txt"
+            path = f"./{task_id}_aggregated.txt"
             encoded = ""
             if os.path.exists(path):
                 with open(path) as fp:
